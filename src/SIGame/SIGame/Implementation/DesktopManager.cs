@@ -24,6 +24,8 @@ public sealed class DesktopManager : PlatformManager
 {
     private Window? _dialogWindow;
 
+    private string _secret = "O5lV9WT0cPZiKiP96jZxzjikDqmvIRbwY5Vg0lPrkGG";
+
     private readonly System.Windows.Controls.MediaElement _element = new System.Windows.Controls.MediaElement
     {
         LoadedBehavior = System.Windows.Controls.MediaState.Manual,
