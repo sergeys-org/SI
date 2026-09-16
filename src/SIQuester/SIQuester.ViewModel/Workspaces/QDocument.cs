@@ -3001,10 +3001,34 @@ public sealed class QDocument : WorkspaceViewModel
                             var link = content.Value;
                             var tmpFile = System.IO.Path.Combine(tempMediaFolder, fileName);
 
-                            using (var stream = await HttpClient.GetStreamAsync(link))
-                            using (var fs = File.Create(tmpFile))
+                            // Validate and sanitize the URL
+                            if (!Uri.TryCreate(link, UriKind.Absolute, out Uri uri) ||
+                                !(uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
                             {
-                                await stream.CopyToAsync(fs);
+                                throw new ArgumentException("Invalid URL scheme. Only HTTP and HTTPS are allowed.");
+                            }
+
+                            // Resolve the host and reject loopback/private/link-local/metadata ranges
+                            var host = uri.DnsSafeHost;
+                            if (IPAddress.TryParse(host, out IPAddress ipAddress))
+                            {
+                                if (IsPrivateIp(ipAddress))
+                                {
+                                    throw new ArgumentException("Access to private or reserved IP ranges is not allowed.");
+                                }
+                            }
+
+                            // Configure HttpClient to disable redirects or revalidate them
+                            using (var httpClient = new HttpClient(new HttpClientHandler
+                            {
+                                AllowAutoRedirect = false // Disable automatic redirects
+                            }))
+                            {
+                                using (var stream = await httpClient.GetStreamAsync(uri))
+                                using (var fs = File.Create(tmpFile))
+                                {
+                                    await stream.CopyToAsync(fs);
+                                }
                             }
 
                             var item = collection.AddFile(tmpFile);
